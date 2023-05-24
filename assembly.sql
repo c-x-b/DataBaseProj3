@@ -22,17 +22,19 @@ SELECT
 FROM
     Assembly;
 
-WITH recursive Components (part, subpart) AS (
+WITH recursive Components (part, subpart, LEVEL) AS (
     SELECT
         part,
-        subpart
+        subpart,
+        1
     FROM
         Assembly
     UNION
     ALL
     SELECT
         A.part,
-        C.subpart
+        C.subpart,
+        C.level + 1
     FROM
         Assembly A,
         Components C
@@ -44,28 +46,27 @@ SELECT
 FROM
     Components
 WHERE
-    part = ' trike ';
+    part = 'trike';
 
-WITH RECURSIVE cte (part, subpart, LEVEL) AS (
-    SELECT
-        part,
-        subpart,
-        1
-    FROM
-        Assembly
-    WHERE
-        part = 'trike'
-    UNION
-    ALL
-    SELECT
-        a.part,
-        a.subpart,
-        cte.level + 1
-    FROM
-        Assembly a
-        INNER JOIN cte ON a.part = cte.subpart
-)
+DELIMITER $ $ CREATE PROCEDURE buildTree(IN root char(20), OUT tree json) BEGIN DECLARE subpart_ CHAR(20) DEFAULT NULL;
+
+DECLARE subTree JSON DEFAULT NULL;
+
 SELECT
-    *
+    subpart
 FROM
-    cte;
+    `Assembly`
+WHERE
+    part = root INTO subpart_;
+
+IF subpart_ IS NULL THEN
+SET
+    tree = subTree;
+
+ELSE CALL calctotal(subpart_, subTree);
+
+SET
+    tree = JSON_ARRAY (root, subTree)
+END IF;
+
+END $ $ DELIMITER;
